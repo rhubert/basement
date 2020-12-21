@@ -1,0 +1,24 @@
+inherit: [autotools]
+
+metaEnvironment:
+   PKG_VERSION: "2.9.10"
+
+checkoutSCM:
+   -
+    scm: url
+    url:  http://xmlsoft.org/sources/libxml2-${PKG_VERSION}.tar.gz
+    digestSHA1: db6592ec9ca9708c4e71bf6bfd907bbb5cd40644
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/libxml2-${PKG_VERSION} \
+      --without-python
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev
+
+   tgt:
+      packageScript: |
+         autotoolsPackageTgt
