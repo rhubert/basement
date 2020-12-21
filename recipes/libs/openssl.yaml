@@ -22,6 +22,10 @@ buildScript: |
     export TARGETMACH=${AUTOCONF_HOST}
     export LDFLAGS="-Wl,-rpath-link=${BOB_DEP_PATHS[libs::zlib-dev]}/usr/lib"
 
+    if [[ "${ARCH}" == "arm64" ]]; then
+      ARCH=aarch64
+    fi
+
     mkdir -p install
     tar -xzf $1/openssl-${PKG_VERSION}.tar.gz
     pushd openssl-${PKG_VERSION}
