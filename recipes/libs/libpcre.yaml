@@ -1,0 +1,17 @@
+inherit: [autotools]
+
+checkoutSCM:
+   - scm: url
+     url: https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.bz2
+     digestSHA256: "19108658b23b3ec5058edc9f66ac545ea19f9537234be1ec62b714c84399366d"
+     stripComponents: 1
+
+buildScript: |
+   autotoolsBuild $1
+
+multiPackage:
+   dev:
+      packageScript: autotoolsPackageDev
+   tgt:
+      packageScript: autotoolsPackageTgt
+
