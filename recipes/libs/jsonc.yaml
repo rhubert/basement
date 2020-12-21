@@ -1,0 +1,19 @@
+inherit: [cmake]
+
+metaEnvironment:
+    PKG_VERSION: "0.15"
+
+checkoutSCM:
+    scm: url
+    url: https://s3.amazonaws.com/json-c_releases/releases/json-c-${PKG_VERSION}.tar.gz
+    digestSHA256: b8d80a1ddb718b3ba7492916237bbf86609e9709fb007e7f7d4322f02341a4c6
+    stripComponents: 1
+
+buildScript: |
+   cmakeBuild $1
+
+multiPackage:
+    dev:
+        packageScript: cmakePackageDev
+    tgt:
+        packageScript: cmakePackageTgt
