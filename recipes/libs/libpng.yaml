@@ -1,0 +1,27 @@
+inherit: [autotools]
+
+metaEnvironment:
+   PKG_VERSION: "1.6.37"
+
+depends:
+   - libs::zlib-dev
+   - use: []
+     depends:
+        - libs::zlib-tgt
+
+checkoutSCM:
+   scm: url
+   url: https://downloads.sourceforge.net/libpng/libpng-${PKG_VERSION}.tar.xz
+   digestSHA256: "505e70834d35383537b6491e7ae8641f1a4bed1876dbfe361201fc80868d88ca"
+   stripComponents: 1
+
+buildScript: |
+   autotoolsBuild $1
+
+multiPackage:
+   dev:
+      provideDeps: ['*-dev']
+      packageScript: autotoolsPackageDev
+   tgt:
+      provideDeps: ['*-tgt']
+      packageScript: autotoolsPackageTgt
