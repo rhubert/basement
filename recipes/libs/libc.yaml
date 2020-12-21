@@ -27,6 +27,7 @@ buildScript: |
         done
 
         rsync "${OPTS[@]}" "${BOB_TOOL_PATHS[target-toolchain]}/$TOOLCHAIN_SYSROOT/" .
+        rsync "${OPTS[@]}" "${BOB_TOOL_PATHS[target-toolchain]}/$TOOLCHAIN_SYSROOT/.." .
     }
 
 multiPackage:
@@ -53,13 +54,13 @@ multiPackage:
 
     threaddb-tgt:
         buildScript: |
-            copyFiles /usr/ /usr/lib/ \
+            copyFiles /usr/ /usr/lib/ /lib64 \
                 "libthread_db*.so*" \
                 "!*"
 
     stdc++-tgt:
         buildScript: |
-            copyFiles /usr/ /usr/lib/ \
+            copyFiles /usr/ /usr/lib/ /lib64 \
                 "!*.py" \
                 "libstdc++.so.*" \
                 "!*"
