@@ -1,0 +1,20 @@
+inherit: [autotools]
+
+metaEnvironment:
+   PKG_VERSION: "1.47.17"
+
+checkoutSCM:
+   scm: url
+   url: http://ftp.gnu.org/pub/gnu/help2man/help2man-${PKG_VERSION}.tar.xz
+   digestSHA1: "770023a94bf8207c46d9590ec0af7b345c433d54"
+
+buildVars: [PKG_VERSION]
+buildTools: [host-toolchain]
+buildScript: |
+   autotoolsBuild $1/help2man-${PKG_VERSION}
+
+packageScript: |
+   autotoolsPackageTgt
+
+provideTools:
+   help2man: "usr/bin"
