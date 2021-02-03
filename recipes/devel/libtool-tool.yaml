@@ -1,0 +1,26 @@
+inherit: [autotools]
+
+metaEnvironment:
+   PKG_VERSION: "2.4.6"
+
+checkoutSCM:
+   scm: url
+   url: http://ftp.gnu.org/pub/gnu/libtool/libtool-${PKG_VERSION}.tar.gz
+   digestSHA1: "25b6931265230a06f0fc2146df64c04e5ae6ec33"
+
+depends:
+   - name: devel::help2man
+     use: [tools]
+
+buildVars: [PKG_VERSION]
+buildTools: [host-toolchain, help2man]
+buildScript: |
+   rsync -a --delete $1/libtool-${PKG_VERSION}/ .
+   autotoolsBuild $(pwd)
+
+packageScript: |
+   autotoolsPackageTgt
+   cp $1/build-aux/ltmain.sh usr/bin
+
+provideTools:
+   libtool-tool: "usr/bin"

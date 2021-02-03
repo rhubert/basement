@@ -61,6 +61,7 @@ depends:
     - devel::fakeroot
     - devel::git
     - devel::gperf
+    - devel::libtool-tool
     # - devel::intltool #-> "configure: error: XML::Parser perl module is required for intltool"
     - devel::m4
     - devel::makedepend
