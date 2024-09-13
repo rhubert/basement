@@ -1,0 +1,16 @@
+inherit: [python3-pkg]
+
+metaEnvironment:
+   PKG_VERSION: "2.0"
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/Suor/funcy.git
+   tag: "${PKG_VERSION}"
+   commit: 13fac0037c109a9e4649fc8ee343be17647f7407
+
+buildScript: |
+   python3BuildSetuptools $1
+
+packageScript: |
+   python3PackageTgt

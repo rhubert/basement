@@ -1,0 +1,20 @@
+inherit: [python3-pkg]
+checkoutSCM:
+   scm: git
+   url: https:///github.com/pallets/markupsafe.git
+   tag: "2.1.1"
+   commit: b90a42e08121f2cd9ff5dd8e5eef32a70e9959e3
+
+#depends:
+#   - python::python3-setuptools
+
+buildScript: |
+   python3BuildSetuptools $1
+
+packageScript: |
+   python3PackageTgt
+
+# provideDeps: ["python::python3-setuptools"]
+
+provideTools:
+  python_markupsafe: .

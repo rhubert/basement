@@ -1,0 +1,24 @@
+inherit: [python3-pkg]
+
+metaEnvironment:
+   PKG_VERSION: "1.3.2"
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/sqlalchemy/mako.git
+   tag: "rel_$(subst,.,_,${PKG_VERSION})"
+   commit: b0e8875fae006f6e8984c1fe5f82b5eed6d6d63c
+
+depends:
+   - python::markupsafe
+
+buildScript: |
+   python3BuildSetuptools $1
+
+packageScript: |
+   rsync -a --delete $1/install/ .
+
+provideDeps: ["python::markupsafe"]
+
+provideTools:
+  python_mako: .
