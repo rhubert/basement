@@ -29,6 +29,6 @@ checkoutSetup: |
         done
     }
 
-    if [[ ${APPLY_LIBTOOL_PATCH:-yes} != no ]] ; then
+    if [[ ${APPLY_LIBTOOL_PATCH:-yes} != no ]] && [[ ! -e .git ]] ; then
         libtoolApply
     fi
