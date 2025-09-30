@@ -6,7 +6,7 @@
 # In case a package does not use the standard file names, define
 # APPLY_UPDATE_CONFIG to "no" in privateEnvironment and call updateConfigFile
 # or updateConfigFileRecursive as needed.
-checkoutSetup: |
+checkoutSetup: &updateConfigSetup |
     declare -A UPDATE_CONFIG_TEMPLATES=(
         [config.guess]=$<@update-config/config.guess@>
         [config.sub]=$<@update-config/config.sub@>
@@ -44,3 +44,5 @@ checkoutScript: |
     if [[ ${APPLY_UPDATE_CONFIG:-yes} != no ]] ; then
         updateConfigAllRecursive
     fi
+
+buildSetup: *updateConfigSetup
