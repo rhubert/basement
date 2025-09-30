@@ -1,4 +1,4 @@
-buildSetup: |
+buildSetup: &kconfigSetup |
     # Updates a kconfig option
     #
     # $1: option (e.g. ENABLE_FOO)
@@ -56,3 +56,5 @@ buildSetup: |
     {
         grep -qE "^$1=y$" "${2:-.config}"
     }
+
+packageSetup: *kconfigSetup
