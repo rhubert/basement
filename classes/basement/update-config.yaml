@@ -41,7 +41,7 @@ checkoutSetup: &updateConfigSetup |
 checkoutDeterministic: True
 checkoutVars: [APPLY_UPDATE_CONFIG]
 checkoutScript: |
-    if [[ ${APPLY_UPDATE_CONFIG:-yes} != no ]] ; then
+    if [[ ${APPLY_UPDATE_CONFIG:-yes} != no ]] && [[ ! -d .git ]] ; then
         updateConfigAllRecursive
     fi
 
