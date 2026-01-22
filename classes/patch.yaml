@@ -2,12 +2,12 @@ checkoutDeterministic: True
 checkoutSetup: &patchSetup |
     patchApplySeries()
     {
-        local i p=1 fuzz=0 name="" b=""
+        local i p=1 fuzz=0 name="" b="" git=0
 
         # parse arguments
         OPTIND=1
         local opt
-        while getopts "n:p:F:b" opt ; do
+        while getopts "n:p:F:bg" opt ; do
             case "$opt" in
                 n)
                     name="-$OPTARG"
@@ -21,6 +21,9 @@ checkoutSetup: &patchSetup |
                 b)
                     b="--binary"
                     ;;
+                g)
+                    git=1
+                    ;;
                 \?)
                   echo "Invalid option: -$OPTARG" >&2
                   exit 1
@@ -28,6 +31,11 @@ checkoutSetup: &patchSetup |
             esac
         done
         shift $(( OPTIND -1 ))
+
+        # never patch a git repo unless explicitly requested by `-g`
+        if [[ -d ".git" ]] && [[ $git == 0 ]]; then
+            return
+        fi
 
         # Skip if series is already applied. Otherwise try to remove old series if
         # it does not match.
