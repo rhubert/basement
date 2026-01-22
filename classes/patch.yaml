@@ -1,5 +1,5 @@
 checkoutDeterministic: True
-checkoutSetup: |
+checkoutSetup: &patchSetup |
     patchApplySeries()
     {
         local i p=1 fuzz=0 name="" b=""
@@ -85,3 +85,5 @@ checkoutSetup: |
             echo "$subject" >> "$name/series"
         done
     }
+
+buildSetup: *patchSetup
