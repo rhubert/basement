@@ -1,0 +1,21 @@
+--- db/linker.xml.old	2022-09-22 19:09:05.000000000 +0200
++++ db/linker.xml	2025-03-12 07:41:56.374384280 +0100
+@@ -924,6 +924,18 @@
+     </config>
+   </configuration>
+
++  <configuration>
++    <targets>
++      <target name="x86_64-cross-linux-gnu" />
++    </targets>
++    <config>
++   for Archive_Builder  use ("x86_64-cross-linux-gnu-ar", "cr");
++   for Archive_Builder_Append_Option use ("q");
++   for Archive_Indexer  use ("x86_64-cross-linux-gnu-ranlib");
++   for Archive_Suffix   use ".a";
++    </config>
++  </configuration>
++
+   <!-- powerpc-elf-lynxos178e, after the previous one
+        to overwrite the attributes -->
+   <configuration>

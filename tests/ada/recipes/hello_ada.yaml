@@ -1,0 +1,14 @@
+inherit: [install]
+
+checkoutSCM:
+    scm: import
+    url: "src/hello_ada"
+
+buildTools: [target-toolchain, gprbuild]
+buildScript: |
+    gprbuild -P $1/hello --relocate-build-tree=$(pwd)/build
+    gprinstall -P $1/hello --relocate-build-tree=$(pwd)/build \
+        -p --prefix=$(pwd)/install/usr --no-project --no-manifest
+
+packageScript: |
+    installPackageTgt "$1/install/"

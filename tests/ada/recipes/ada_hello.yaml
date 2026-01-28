@@ -1,0 +1,44 @@
+# This is a simple test for the ada support of a cross-toolchain.
+# To cross-compile a ada-compile a ada-compiler is necessary.
+# Unfortunately the (major?) versions must match. E.g. using a ada-enabled
+# gcc 13 usually fails to compile gcc 14 with ada due to new pragmas,
+# new warnings, ... Also with ada2022 a new ada standard has been published,
+# which is not supported by gcc < 12, and not fully supported by any compiler yet.
+#
+# As a result we can not use a very old compiler with ada to build the regular
+# `host-compat-toolchain` with ada and use this to compile a ada-enabled cross
+# compiler.
+# Instead we use the gnat-fsf compiler from github matching the version of the
+# cross-compiler we want to build and add the sysroot of our host-compat toolchain
+# to this compiler. With the result of this merge we build the ada-enabled cross
+# compiler.
+
+inherit: ['basement::rootrecipe']
+
+depends:
+    - name: adacore::gnat-x86_64-pc-linux-gnu
+      use: [tools, environment]
+      forward: True
+
+    - tools:
+          target-toolchain: host-compat-gnat-toolchain
+      depends:
+          - name: adacore::gprbuild-bootstrap
+            use: [tools]
+            forward: True
+
+          - name: adacore::gprbuild
+            use: [tools]
+            forward: True
+
+          - name: devel::cross-toolchain-x86_64-linux-gnu-ada
+            use: [tools, environment]
+            tools:
+                target-toolchain: host-compat-gnat-toolchain
+                host-native-toolchain: host-compat-gnat-toolchain
+            forward: True
+
+    - hello_ada
+
+packageDepends: True
+packageScript: "/bin/true"
