@@ -140,7 +140,7 @@ static int get_next_token(void)
 		return MY_TOKEN;
 	}
 
-	char buf;
+	unsigned char buf;
 	switch (read(jobs_pipe_rd, &buf, 1)) {
 		case 1:
 			return buf;
