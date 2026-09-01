@@ -325,6 +325,14 @@ static void unget_next_file(struct input_file *f)
 
 static void process_file(char *fn)
 {
+	// Detach from stdin. Only pxargs should read file names from it.
+	int devnull = open("/dev/null", O_RDONLY);
+	if (devnull >= 0) {
+		dup2(devnull, STDIN_FILENO);
+		if (devnull != STDIN_FILENO)
+			close(devnull);
+	}
+
 	jobs_argv[jobs_argc - 1] = fn;
 	execvp(jobs_argv[0], jobs_argv);
 
