@@ -175,9 +175,11 @@ void return_token(int token)
 			} else if (r == 0) {
 				fprintf(stderr, "Broken jobs pipe");
 				set_done(EXIT_ERROR);
+				break;
 			} else if (r < 0 && errno != EINTR) {
 				perror("jobs pipe write");
 				set_done(EXIT_ERROR);
+				break;
 			}
 		}
 	}
