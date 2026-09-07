@@ -28,6 +28,7 @@ provideTools:
             GNU_LD: "ld"
 
             # meta information
+            ARCH: "${ARCH}"
             TOOLCHAIN_FLAVOUR: gcc
         fingerprintIf: True
         fingerprintScript: |
