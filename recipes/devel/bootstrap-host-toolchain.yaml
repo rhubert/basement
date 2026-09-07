@@ -4,7 +4,7 @@
 
 provideTools:
     host-toolchain: "."
-    target-toolchain: &target-toolchain
+    target-toolchain:
         path: "."
         environment:
             # Default tool names.
@@ -31,8 +31,46 @@ provideTools:
             ARCH: "${ARCH}"
             TOOLCHAIN_FLAVOUR: gcc
         fingerprintIf: True
-        fingerprintScript: |
+        fingerprintScript: &fingerprint-script |
             bob-libc-version gcc
             bob-libstdc++-version g++
-    host-compat-toolchain: *target-toolchain
-    host-native-toolchain: *target-toolchain
+
+    host-compat-toolchain: &compat-toolchain
+        path: "."
+        environment:
+            # Default tool names.
+            AR: "ar"
+            AS: "as"
+            CC: "gcc"
+            CPP: "cpp"
+            CXX: "g++"
+            LD: "ld"
+            NM: "nm"
+            OBJCOPY: "objcopy"
+            OBJDUMP: "objdump"
+            RANLIB: "ranlib"
+            READELF: "readelf"
+            STRIP: "strip"
+
+            # Fallback variables for recipes that cannot work with clang.
+            GNU_CC: "gcc"
+            GNU_CPP: "cpp"
+            GNU_CXX: "g++"
+            GNU_LD: "ld"
+
+            # meta information
+            ARCH: "${ARCH}"
+            TOOLCHAIN_FLAVOUR: gcc
+
+            # Override compiler flags to mask active settings.
+            #
+            # Attention: keep in sync with default.yaml! These flags should be
+            # reset exactly to their default values.
+            CPPFLAGS:   ""
+            CFLAGS:     "-O2 -pipe -fPIC"
+            CXXFLAGS:   "-O2 -pipe -fPIC"
+            LDFLAGS:    ""
+        fingerprintIf: True
+        fingerprintScript: *fingerprint-script
+
+    host-native-toolchain: *compat-toolchain
