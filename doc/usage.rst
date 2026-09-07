@@ -33,7 +33,7 @@ C/C++ toolchains
 ----------------
 
 Before delving into the details, some definitions are necessary. The basement layer
-uses the same terms that were establisdhed by the autoconf project. In principle, three
+uses the same terms that were established by the autoconf project. In principle, three
 different systems are distinguished:
 
 The *build* system
@@ -52,7 +52,7 @@ The *target* system
     stored in the ``AUTOCONF_TARGET`` variable. It describes the system for
     which the compiler produces the object code. For a cross-compiler, the
     *target* system is different from the *host* system where the compiler is
-    executed.  Of *build* and *target* system are identical, it is called a
+    executed.  If *build* and *target* systems are identical, it is called a
     native compiler.
 
 The different systems are described as a so-called *target triplet*. Even
@@ -205,11 +205,11 @@ code.
 Given the above definitions, practically all recipes that build C/C++ code will do
 a::
 
-    buildTool: [target-toolchain]
+    buildTools: [target-toolchain]
 
 to use the currently selected C/C++ compiler. Only if the build requires the
 native compiler too (e.g. to build some intermediate build tool),
-``host-toolchain`` may be added to ``buildTool``.
+``host-toolchain`` may be added to ``buildTools``.
 
 There are two other tools that are always defined. They are intended to be used
 at special places where they replace the ``target-toolchain`` for selected
@@ -475,27 +475,350 @@ Standard build systems
 The following build tools are supported by the basement layer. See the
 respective section below for the particular usage notes.
 
+Most classes follow the same pattern: they add a ``<name>Build`` function to
+be called from :external:ref:`buildScript <configuration-recipes-scripts>`
+that drives the actual build system, and a set of ``<name>Package<Kind>``
+functions to be used in :external:ref:`packageScript
+<configuration-recipes-scripts>` for the various sub-packages of a
+:external:ref:`multiPackage <configuration-recipes-multipackage>`. The
+following ``<Kind>`` suffixes are used consistently:
+
+``Bin``
+    Everything except headers, libraries and their development files. This is
+    the package that end users install to actually run the program.
+
+``Dev``
+    Headers, static libraries, ``pkg-config``/CMake package files and, if
+    shared libraries are enabled (see below), the shared libraries needed to
+    link against the package. Meant to be used as a build-time-only
+    dependency.
+
+``Lib``
+    Only the shared libraries (or Windows DLLs). This is the runtime piece
+    that has to be shipped alongside any executable that links against the
+    shared library.
+
+``Tgt``
+    Convenience combination of ``Bin`` and ``Lib``. Most packages provide
+    this for downstream ``depends`` entries that request ``*-tgt``, i.e.
+    everything needed at runtime.
+
+Internally, all of the above are implemented on top of the ``install`` class
+(``installPackageBin``, ``installPackageDev``, ``installPackageLib`` and
+``installPackageTgt``, plus the generic ``installCopy`` helper), which takes
+care of stripping debug symbols, fixing up ``#!`` interpreter lines and
+adjusting installed ``pkg-config`` files accordingly. Whether shared
+libraries, static libraries or both are built and packaged is controlled
+globally by the ``BASEMENT_LIBS`` variable (``static``, ``shared`` or
+``both``). If unset, it defaults to ``shared`` when cross-compiling and to
+``static`` otherwise, including when using the ``host-compat-toolchain``,
+which technically cross-compiles for the host but is treated like a native
+build for this purpose.
+
+Autotools
+~~~~~~~~~
+
+The ``autotools`` class supports packages built with the GNU Autotools
+(``autoconf``/``automake``/``libtool``) and honours the
+``target-toolchain``, i.e. packages can be cross-compiled. A separate
+``autotools-noarch`` class exists for packages whose ``configure``/``make``
+does not involve a C/C++ compiler at all (e.g. pure shell/Perl based helper
+packages) and therefore never cross-compiles.
+
+Standard usage::
+
+    inherit: [autotools]
+
+    buildScript: |
+        autotoolsBuild $1 \
+            --disable-nls \
+            --without-foo
+
+    multiPackage:
+        "":
+            depends:
+                - name: package::name-tgt
+                  use: []
+            packageScript: autotoolsPackageBin
+            provideDeps: [ "*-tgt" ]
+        dev:
+            packageScript: autotoolsPackageDev
+        tgt:
+            packageScript: autotoolsPackageLib
+
+The above example shows a package that builds an executable and one or more
+(shared) libraries. The executable of the package depends on the libraries at
+runtime. Depending on the package type (application, library or both) only a
+subset of the ``multiPackage``'s is needed.
+
+``autotoolsBuild [-i <target>] [-m <target>] [-o <opt>] [-O <opt>] [-s] [-S <opt>] <source-path> [configure-args...]``
+    Runs ``configure``, ``make`` and ``make install`` (``DESTDIR``-installed
+    into ``install/``) in a fresh ``build/`` directory. All options have to
+    be given *before* ``<source-path>``; everything after ``<source-path>``
+    is passed verbatim to ``configure``.
+
+    Unless ``AUTOTOOLS_AUTO_STATIC`` is set to ``no``, ``--enable-static``
+    and/or ``--enable-shared`` (and their ``--disable-...`` counterparts) are
+    added automatically, depending on the effective library type.
+
+    * ``-i <target>``: ``make`` install target (default ``install``).
+    * ``-m <target>``: ``make`` build target (default: the ``make`` default
+      target).
+    * ``-o <opt>``: extra option appended to the build ``make`` invocation
+      (may be given multiple times).
+    * ``-O <opt>``: extra option appended to the install ``make`` invocation
+      (may be given multiple times).
+    * ``-s``: synchronize the sources into a writable directory first and run
+      ``autoconfReconfigure`` there (see below). Needed whenever the checked
+      out sources were patched and ``configure`` has to be regenerated,
+      since the checkout directory itself is read-only.
+    * ``-S <opt>``: pass ``-<opt>`` through to ``autoconfReconfigure`` (only
+      useful together with ``-s``).
+
+``autotoolsPackageBin``, ``autotoolsPackageDev``, ``autotoolsPackageLib``, ``autotoolsPackageTgt``
+    Package the respective parts of the ``install/`` directory created by
+    ``autotoolsBuild``. Like the underlying ``installPackage*`` functions,
+    they take an optional build path as first argument (defaults to the
+    source path that was passed to ``autotoolsBuild``) followed by any number
+    of additional ``installCopy`` include/exclude patterns.
+
+``autotoolsNoarchBuild``, ``autotoolsNoarchPackageBin``, ``autotoolsNoarchPackageDev``, ``autotoolsNoarchPackageLib``, ``autotoolsNoarchPackageTgt``
+    Equivalents for ``autotools-noarch``. ``autotoolsNoarchBuild`` accepts
+    the same ``-i``/``-m``/``-o``/``-O`` options but never passes
+    ``--host``/``--build``/``--target`` to ``configure`` and does not touch
+    any static/shared library switches.
+
+For packages whose ``configure`` script (or ``configure.ac``/``Makefile.am``)
+was patched and therefore needs to be regenerated, inherit the ``autoconf``
+class in addition to ``autotools``:
+
+``autoconfReconfigure [-a] [-A <arg>] [-u]``
+    Runs ``autoreconf`` (and, if requested, ``aclocal``) in the current
+    directory, but only if ``configure`` is missing or older than
+    ``configure.ac``. ``-a`` runs ``aclocal -I m4 --install`` beforehand
+    (``-A <arg>`` replaces the default ``aclocal`` arguments); ``-u`` only
+    updates instead of force-reinstalling (drops the ``-fi`` switch to
+    ``autoreconf``).
+
+``autoconfSyncReconfigure <src> <dst> [autoconfReconfigure-args...]``
+    Copies (``rsync``) the sources from ``<src>`` to the writable ``<dst>``
+    and calls ``autoconfReconfigure`` there. This is exactly what
+    ``autotoolsBuild -s`` does with ``$1``/``build/src``.
+
+The ``autotools`` class also pulls in the ``libtool`` mixin, which patches
+known-buggy versions of a checked-out ``ltmain.sh`` for cross-compilation.
+Since ``autoreconf`` regenerates ``ltmain.sh`` anyway, this patching is
+disabled automatically when the ``autoconf`` class is used; it can also be
+disabled explicitly with ``APPLY_LIBTOOL_PATCH: "no"``.
+
 CMake
 ~~~~~
 
+The ``cmake`` class supports CMake based packages, including
+cross-compilation. It generates a CMake toolchain file (setting
+``CMAKE_SYSTEM_NAME``, ``CMAKE_SYSTEM_PROCESSOR`` and the compiler
+variables) when cross-compiling, derives ``CMAKE_FIND_ROOT_PATH`` from all
+recipe dependencies, and defaults to the Ninja generator.
+
+Standard usage::
+
+    inherit: [cmake]
+
+    buildScript: |
+        cmakeBuild $1 \
+            -DPCRE2_SUPPORT_JIT=ON \
+            -DPCRE2_BUILD_TESTS=OFF
+
+    multiPackage:
+        dev:
+            packageScript: cmakePackageDev
+        tgt:
+            packageScript: cmakePackageTgt
+
+``cmakeBuild [-i <component>] [-m <target>] [-n] [-o <opt>] <source-path> [-D...]``
+    Configures (``cmake``), builds and installs (``DESTDIR``-installed into
+    ``install/``) the package in a fresh ``build/`` directory. Options must
+    be given *before* ``<source-path>``; everything after it is passed
+    verbatim to ``cmake`` as additional arguments (e.g. ``-D...`` cache
+    entries).
+
+    * ``-i <component>``: only install the given CMake install component.
+    * ``-m <target>``: build the given target instead of the default; may be
+      given multiple times.
+    * ``-n``: skip the install step entirely.
+    * ``-o <opt>``: extra option passed to the build tool (``ninja``/``make``);
+      may be given multiple times.
+
+    The generator can be overridden with ``CMAKE_GENERATOR`` (defaults to
+    ``Ninja``; ``Unix Makefiles`` is also supported).
+
+``cmakePackageBin``, ``cmakePackageDev``, ``cmakePackageLib``, ``cmakePackageTgt``
+    See the generic description at the top of this section. Take an optional
+    build path (defaults to the source path passed to ``cmakeBuild``)
+    followed by ``installCopy`` patterns.
+
+To pin an older CMake release for a package that requires it, inherit
+``cmake-3`` instead of ``cmake``. It behaves identically but depends on a
+dedicated, host-built ``devel::cmake-3`` tool instead of whatever ``cmake``
+is otherwise available.
+
+Meson
+~~~~~
+
+The ``meson`` class supports Meson/Ninja based packages, including
+cross-compilation. It generates a Meson ``cross_file.txt`` (when
+cross-compiling) and a ``native_file.txt``, translating
+``CFLAGS``/``CXXFLAGS``/``LDFLAGS`` into the respective Meson built-in
+options, since Meson does not honour these environment variables the same
+way Autotools/CMake do.
+
+Standard usage::
+
+    inherit: [meson]
+
+    buildScript: |
+        mesonBuild $1 -Dtests=false
+
+    multiPackage:
+        dev:
+            packageScript: mesonPackageDev
+        tgt:
+            packageScript: mesonPackageTgt
+
+``mesonBuild <source-path> [meson-args...]``
+    Runs ``meson setup`` (only once; re-configuration afterwards is handled
+    by Meson/Ninja itself, tracked with a ``.meson-done`` stamp file)
+    followed by ``ninja install`` (``DESTDIR``-installed into ``install/``)
+    in a fresh ``build/`` directory. ``-Ddefault_library=<type>`` is derived
+    automatically from the effective library type. Any additional arguments
+    are passed verbatim to ``meson setup``.
+
+``mesonPackageBin``, ``mesonPackageDev``, ``mesonPackageLib``, ``mesonPackageTgt``
+    See the generic description at the top of this section.
+
+Rust
+~~~~
+
+The ``cargo`` class supports Rust packages built with Cargo, including
+cross-compilation via a ``devel::rustc-cross`` toolchain. Since Bob builds
+are meant to work fully offline, all crate dependencies have to be vendored
+during the checkout step rather than downloaded on demand while building.
+
+Standard usage::
+
+    inherit: [cargo]
+
+    checkoutScript: |
+        cargoFetchDeps
+
+    buildScript: |
+        cargoBuild $1
+
+    multiPackage:
+        tgt:
+            packageScript: cargoPackageTgt
+
+``cargoFetchDeps [<sub-dir>]``
+    To be called from ``checkoutScript``. Runs ``cargo vendor`` to fetch all
+    crate dependencies declared in ``Cargo.toml`` into ``vendor/``, writing
+    the necessary ``.cargo/config.toml`` so that the subsequent build works
+    fully offline.
+
+``cargoBuild <source-path> [cargo-args...]``
+    Runs ``cargo install --offline --locked`` for the configured
+    ``target-toolchain`` (target triplet derived from ``AUTOCONF_HOST`` into
+    ``RUST_ARCH``) and installs into ``install/usr``. Additional arguments
+    are passed verbatim to ``cargo install``.
+
+``cargoPackageBin``, ``cargoPackageDev``, ``cargoPackageLib``, ``cargoPackageTgt``
+    See the generic description at the top of this section.
+
 Python 3
---------
+~~~~~~~~
+
+The ``python3`` class is the base for all Python related classes. On its
+own, it just makes sure that ``PYTHONPATH`` includes the ``site-packages``
+directories of all recipe dependencies (and, during packaging, the
+package's own ``install/`` directory), so that dependencies are picked up
+automatically without a virtual environment. Since there are several,
+mutually incompatible, ways how Python packages are built, dedicated mixin
+classes exist for the common cases:
+
+``python3::build``
+    Standard `PEP 517 <https://peps.python.org/pep-0517/>`_ build using the
+    ``build`` and ``installer`` PyPI packages, i.e. whatever
+    ``pyproject.toml`` declares as its ``build-backend``. Provides
+    ``python3Build [-w] <source-path>`` (``-w`` forces a wheel build), which
+    builds in ``build/`` and installs into ``install/usr``.
+
+``python3::setuptools``
+    Legacy ``setup.py``-based packages. Provides ``python3BuildSetuptools
+    <source-path>``, which runs ``python3 setup.py install`` and afterwards
+    fixes up the ``#!`` line of installed scripts.
+
+``python3::flit``
+    Packages using the ``flit_core`` backend directly (without going through
+    ``python3::build``). Provides ``python3BuildFlit <source-path>``.
+
+``python3::pip``
+    Provides ``python3InstallPip <pip-install-args...>`` to install
+    already-built wheels (or plain PyPI packages) with ``pip install``.
+
+``python3::cext``
+    Mixin to be combined with one of the classes above for packages that
+    build a native CPython extension module. Pulls in the
+    ``target-toolchain`` and ``python::python3-dev``, and sets up
+    ``_PYTHON_HOST_PLATFORM``/``_PYTHON_SYSCONFIGDATA_NAME`` for
+    cross-compilation. Adds ``python3CExtPackageTgt``, which additionally
+    strips the compiled extension modules.
+
+Regardless of which of the above is used, packaging is always done with:
+
+``python3PackageTgt [<build-path>] [rsync-args...]``
+    Copies the ``install/`` directory created by one of the ``Build``
+    functions above into the package. Since Python packages usually do not
+    distinguish between a ``-dev`` and a ``-tgt`` package, this is normally
+    the only packaging function needed.
+
+Standard usage::
+
+    inherit: ["python3::flit"]
+
+    buildScript: |
+        python3BuildFlit $1
+
+    packageScript: |
+        python3PackageTgt
 
 Perl
-----
+~~~~
 
-.. TODO
+The ``perl5`` class does not provide a dedicated build function. Its sole
+purpose is to add every dependency's ``.../lib/perl5/site_perl`` directory to
+``PERL5LIB``, so that Perl modules installed by other recipes are found
+automatically. Packages that build a Perl module themselves (typically via
+``perl Makefile.PL && make && make install``, i.e.
+``ExtUtils::MakeMaker``) drive this directly in their ``buildScript`` using
+the generic ``make`` class (``makeParallel``). The ``perl5::build`` variant
+additionally exports ``PERL_INC``/``PERL_ARCHLIB``/``PERL_SRC`` (pointing at
+the ``perl::perl-dev`` dependency) and is used to build the Perl interpreter
+itself.
 
 Ocaml / opam / dune
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 Ocaml is available for building ocaml host tools only. ATM there is no cross
 compiling support.
 
-See `tests/linux/recipes/ocaml/hello.yaml` for a hello world example using dune.
+The ``ocaml`` class does not add a build function either; it only wires up
+``OCAMLLIB``, ``CAML_LD_LIBRARY_PATH``, ``OCAMLFIND_CONF`` and ``OCAMLPATH``
+(discovering ``ocamlfind`` packages, i.e. directories containing a ``META``
+file, in all dependencies), so that ``dune``/``ocamlfind``/``ocamlopt``,
+invoked directly from ``buildScript``, find their dependencies.
+``ocamlFixupInstall`` may be called from ``packageScript`` to rewrite
+hard-coded ``#!.../ocamlrun`` shebangs into ``#!/usr/bin/env ocamlrun``.
 
-Rust
-----
+See `tests/linux/recipes/ocaml/hello.yaml` for a hello world example using dune.
 
 Available development tools
 ---------------------------
