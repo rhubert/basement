@@ -140,7 +140,7 @@ static int get_next_token(void)
 		return MY_TOKEN;
 	}
 
-	char buf;
+	unsigned char buf;
 	switch (read(jobs_pipe_rd, &buf, 1)) {
 		case 1:
 			return buf;
@@ -175,9 +175,11 @@ void return_token(int token)
 			} else if (r == 0) {
 				fprintf(stderr, "Broken jobs pipe");
 				set_done(EXIT_ERROR);
+				break;
 			} else if (r < 0 && errno != EINTR) {
 				perror("jobs pipe write");
 				set_done(EXIT_ERROR);
+				break;
 			}
 		}
 	}
@@ -323,6 +325,14 @@ static void unget_next_file(struct input_file *f)
 
 static void process_file(char *fn)
 {
+	// Detach from stdin. Only pxargs should read file names from it.
+	int devnull = open("/dev/null", O_RDONLY);
+	if (devnull >= 0) {
+		dup2(devnull, STDIN_FILENO);
+		if (devnull != STDIN_FILENO)
+			close(devnull);
+	}
+
 	jobs_argv[jobs_argc - 1] = fn;
 	execvp(jobs_argv[0], jobs_argv);
 
@@ -462,6 +472,13 @@ static void handle_sigint(int signo)
 {
 	(void)signo;
 	set_done(EXIT_FAILURE);
+}
+
+static void set_nonblocking(int fd)
+{
+	int flags = fcntl(fd, F_GETFL);
+	if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+		perror("fcntl(O_NONBLOCK)");
 }
 
 static int handle_signal(int signo, void (*handler)(int))
@@ -684,6 +701,13 @@ int main(int argc, char **argv)
 		}
 		setenv("MAKEFLAGS", buf, 1);
 	}
+
+	// Make sure input and job server pipe are non-blocking. Neither
+	// get_next_token() nor read_next_files() are checking for readability
+	// but rely on EAGAIN to prevent starvation.
+	set_nonblocking(input_fd);
+	if (jobs_pipe_rd >= 0)
+		set_nonblocking(jobs_pipe_rd);
 
 	children = calloc(jobs_possible, sizeof(*children));
 
