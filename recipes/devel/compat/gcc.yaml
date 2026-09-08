@@ -74,7 +74,15 @@ buildScript: |
                 --disable-documentation \
                 --disable-debug \
                 --with-xmlto=no \
-                --with-fop=no
+                --with-fop=no \
+                --with-gmp-include=${BOB_DEP_PATHS[libs::gmp-dev]}/usr/include \
+                --with-gmp-lib=${BOB_DEP_PATHS[libs::gmp-dev]}/usr/lib \
+                --with-mpfr-include=${BOB_DEP_PATHS[libs::mpfr-dev]}/usr/include \
+                --with-mpfr-lib=${BOB_DEP_PATHS[libs::mpfr-dev]}/usr/lib \
+                --with-mpc-include=${BOB_DEP_PATHS[libs::mpc-dev]}/usr/include \
+                --with-mpc-lib=${BOB_DEP_PATHS[libs::mpc-dev]}/usr/lib \
+                --with-isl-include=${BOB_DEP_PATHS[libs::compat::isl-dev]}/usr/include \
+                --with-isl-lib=${BOB_DEP_PATHS[libs::compat::isl-dev]}/usr/lib
             touch .configure.stamp
         fi
         makeParallel
